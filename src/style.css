@@ -1,0 +1,67 @@
+body {
+    background-color: rgb(29, 30, 34)
+}
+
+header{
+    text-align: center;
+    color: white;
+}
+
+.chart {
+    background-color: rgb(232, 227, 227);
+    margin-top: 2em;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    float: left
+}
+
+#title {
+    font-size: 2.5em;
+}
+
+#subtitle {
+    font-size: 1.5em;
+}
+
+
+#tooltip {
+    width: 180px;
+    background-color: rgba(152, 251, 152, 0.7);
+    position: absolute;
+    font-size: 12px;
+    font-weight: 500;
+    right: 0;
+
+    display: none;
+    text-align: left;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+#holder {
+    margin-top: 10px;
+    margin-bottom: 3em;
+}
+
+svg {
+
+}
+
+.cell {
+
+    stroke: none;
+
+}
+
+
+.cell:hover {
+    stroke: black;
+    stroke-width: 1px;
+}
+
+.dot.doping:hover {
+    fill: lightblue;
+}
+
