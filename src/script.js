@@ -58,11 +58,28 @@ function setData({baseTemperature: baseTemp, monthlyVariance: dataset}) {
      */
     const temperature = x => baseTemp + x;
 
+    /**
+     *
+     * @param {number} x
+     * @param {number} decimal
+     * @return {number}
+     */
+    const precision = (x, decimal = 1) => Math.round(x * Math.pow(10, decimal)) / Math.pow(10, decimal);
 
+
+    /**
+     *
+     * @type {Date[]}
+     */
     const xDomain = [d3.min(dataset, getDate), d3.max(dataset, getDate)];
 
+    /**
+     *
+     * @type {Number[]}
+     */
     const yDomain = [d3.min(dataset, getVariance), d3.max(dataset, getVariance)];
-    console.log(yDomain);
+
+    d3.select("#description").text(`${xDomain[0].getFullYear()} - ${xDomain[1].getFullYear()}: base temperature ${baseTemp}℃`);
 
     const xScale = d3.scaleTime()
         .domain(xDomain)
@@ -70,7 +87,7 @@ function setData({baseTemperature: baseTemp, monthlyVariance: dataset}) {
 
     const yScale = d3.scaleLinear()
         .domain([0.5, 12.5])
-        .range([padding, h - padding]);
+        .range([0, h - padding * 2]);
 
     const colorScale = d3.scaleQuantile()
         .domain(yDomain)
@@ -90,47 +107,10 @@ function setData({baseTemperature: baseTemp, monthlyVariance: dataset}) {
     const cellHeight = (h - 2 * padding) / months.length;
     const cellOffset = cellHeight / 2;
 
+    const tooltip = d3.select('#tooltip');
 
     d3.select('svg').call(svg => {
 
-        svg.append('g')
-            .attr("id", "legend")
-            .attr('transform', `translate(${padding},${h - padding / 2})`)
-            .call((g) => {
-                const width = 400;
-                const height = 30;
-                const min = yDomain[0];
-                const max = yDomain[1];
-                const step = (max - min) / gradient.length;
-
-                const range = d3.range(min, max, step);
-
-                console.log(range)
-
-                const legendScale = d3.scaleLinear()
-                    .domain(yDomain)
-                    .range([0, width]);
-
-                const axis = d3.axisBottom(legendScale)
-                    .tickSizeOuter(0)
-                    .tickFormat(d3.format(".1f"))
-                    .tickValues(range)
-                ;
-                g.selectAll('rect')
-                    .data(range)
-                    .enter()
-                    .append('rect')
-                    .style('fill', d => colorScale(d))
-                    .attr('width', width / gradient.length)
-                    .attr('height', height)
-                    .attr('x', x => legendScale(x))
-                    .attr('y', 0)
-                ;
-                g.append('g')
-                    .attr("transform", `translate(0,${height})`)
-                    .call(axis)
-            })
-        ;
 
         svg.selectAll('rect')
             .data(dataset)
@@ -145,11 +125,64 @@ function setData({baseTemperature: baseTemp, monthlyVariance: dataset}) {
             .attr('height', cellHeight)
             .attr('x', d => xScale(new Date(d.year, 0, 1)))
             .attr('y', d => yScale(d.month) - cellOffset)
+            .on('mouseover', (d) => {
+                const {pageX: x, pageY: y} = d3.event;
+                tooltip.style("display", "block");
+                tooltip.style("left", x + 20 + "px");
+                const v = precision(d.variance);
+                tooltip.html(`${d.year} - ${months[d.month - 1]}<BR\>${precision(baseTemp + d.variance)}℃<BR\> ${v > 0 ? '+' : ''}${v}℃`);
+                const height = tooltip.node().getBoundingClientRect().height;
+                tooltip.style("top", y - parseInt(height / 2) + "px");
+                tooltip.attr('data-year', d.year);
+            })
+            .on('mouseout', () => {
+                tooltip.style("display", "none");
+            });
+
+
+        svg.append('g')
+            .attr("id", "legend")
+            .attr('transform', `translate(${padding},${h - padding})`)
+            .call((g) => {
+                const width = 400;
+                const height = 30;
+                const min = yDomain[0];
+                const max = yDomain[1];
+                const step = (max - min) / gradient.length;
+
+                const range = d3.range(min, max, step).map(x => precision(x));
+                console.log(range);
+
+
+                const legendScale = d3.scaleLinear()
+                    .domain([min, max])
+                    .range([0, width]);
+
+                const values = range;
+                const axis = d3.axisBottom(legendScale)
+                    .tickSizeOuter(0)
+                    .tickFormat(d3.format(".1f"))
+                    .tickValues(range.slice(1))
+                ;
+                g.selectAll('rect')
+                    .data(values)
+                    .enter()
+                    .append('rect')
+                    .style('fill', d => colorScale(d))
+                    .attr('width', (x, i) => (legendScale(range[i + 1]) || width) - legendScale(x))
+                    .attr('height', height)
+                    .attr('x', x => legendScale(x))
+                    .attr('y', 0)
+                ;
+                g.append('g')
+                    .attr("transform", `translate(-0.5,${height})`)
+                    .call(axis)
+            })
         ;
 
         svg.append("g")
             .attr('id', 'x-axis')
-            .attr("transform", `translate(0,${h - padding})`)
+            .attr("transform", `translate(0,${h - padding * 2})`)
             .call(xAxis);
 
         svg.append("g")
@@ -162,53 +195,21 @@ function setData({baseTemperature: baseTemp, monthlyVariance: dataset}) {
             .text('Years')
             .style("text-anchor", "middle")
             .attr("x", (w - padding) / 2)
-            .attr("y", h - padding + 40);
+            .attr("y", h - padding * 2 + 40);
 
         svg.append("text")
             .attr("class", "axisLabel")
             .text('Months')
             .style("text-anchor", "middle")
             .attr("transform", `rotate(-90)`)
-            .attr("x", -h / 2)
+            .attr("x", -(h - padding * 2) / 2)
             .attr("y", 40);
 
 
     });
 
 
-    // const data = {tooltip: d3.select('#tooltip'), xScale, yScale};
-    //
-
-    // .on('mouseover', wrap(handleMouseOver, data))
-    // .on('mouseout', wrap(handleMouseOut, data));
 }
 
 
-/**
- *
- * @param {ApiModel} d
- */
-function handleMouseOver(args, d) {
-    const dot = d3.select(this);
-    const {tooltip} = args;
-    const {pageX: x, pageY: y} = d3.event;
-    tooltip.style("display", "block");
-    tooltip.style("left", x + 20 + "px");
-    tooltip.html(toolTipHtml(d));
-    const height = tooltip.node().getBoundingClientRect().height;
-    tooltip.style("top", y - parseInt(height / 2) + "px");
-    tooltip.attr('data-year', d.Year);
 
-
-    dot.transition().duration(100).attr('r', 10);
-
-}
-
-function handleMouseOut(args) {
-    const {tooltip} = args;
-    tooltip.style("display", "none");
-
-    const dot = d3.select(this);
-    dot.transition().duration(100).attr('r', 8);
-
-}
